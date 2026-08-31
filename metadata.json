@@ -1,0 +1,6 @@
+{
+  "name": "ElectroFix Taller",
+  "description": "Gestión minimalista y seguimiento de órdenes de reparación electrónica (Smart TV, Consolas, Móviles, PCs) y clientes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
