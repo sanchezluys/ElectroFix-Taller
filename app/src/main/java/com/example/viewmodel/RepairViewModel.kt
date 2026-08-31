@@ -482,8 +482,7 @@ class RepairViewModel(application: Application) : AndroidViewModel(application) 
 
     fun saveOrder(order: RepairOrder) {
         viewModelScope.launch {
-            val savedOrderId = repository.saveOrder(order)
-            val savedOrder = order.copy(id = savedOrderId)
+            val savedOrder = repository.saveOrder(order)
             // Client upsert
             val client = Client(
                 id = order.clientId,
@@ -494,7 +493,7 @@ class RepairViewModel(application: Application) : AndroidViewModel(application) 
             repository.saveClient(client)
             closeOrderForm()
 
-            // Open share document dialog so the user can immediately generate PDF/Image/Text
+            // Open share document dialog so the user can immediately generate PDF/Image/Text with complete order data
             openShareDocumentDialog(savedOrder)
         }
     }

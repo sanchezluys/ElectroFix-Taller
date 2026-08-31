@@ -42,6 +42,9 @@ data class RepairOrder(
     val balanceDue: Double
         get() = (if (totalAmount > 0) totalAmount else estimatedCost) - depositPaid
 
+    val displayOrderNumber: String
+        get() = if (orderNumber.isNotBlank()) orderNumber else "ORD-${if (id > 0) (1000 + id) else 1001}"
+
     val formattedEntryDate: String
         get() = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(entryDate))
 
@@ -98,7 +101,7 @@ data class RepairOrder(
             }
             appendLine("-----------------------------")
             appendLine("📋 *COMPROBANTE DE SERVICIO TÉCNICO*")
-            appendLine("🎫 *Orden N°:* $orderNumber")
+            appendLine("🎫 *Orden N°:* $displayOrderNumber")
             appendLine("📅 *Fecha Ingreso:* $formattedEntryDate")
             appendLine("👤 *Cliente:* $clientName")
             appendLine("📱 *Contacto:* $clientPhone")

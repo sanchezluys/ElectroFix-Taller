@@ -113,7 +113,7 @@ fun OrderDetailBottomSheet(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
-                            text = order.orderNumber,
+                            text = order.displayOrderNumber,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
@@ -607,7 +607,7 @@ fun OrderDetailBottomSheet(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Eliminar Orden") },
-            text = { Text("¿Estás seguro de que deseas eliminar permanentemente la orden ${order.orderNumber}? Esta acción no se puede deshacer.") },
+            text = { Text("¿Estás seguro de que deseas eliminar permanentemente la orden ${order.displayOrderNumber}? Esta acción no se puede deshacer.") },
             confirmButton = {
                 Button(
                     onClick = {

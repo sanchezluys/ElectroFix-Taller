@@ -1,5 +1,6 @@
 package com.example.ui.dialogs
 
+import android.Manifest
 import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -48,7 +49,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.Client
+import com.example.util.AppPermissionType
 import com.example.util.ContactPickerHelper
+import com.example.util.PermissionHelper
+import com.example.util.PermissionRationaleDialog
 
 @Composable
 fun ClientFormDialog(
@@ -63,6 +67,7 @@ fun ClientFormDialog(
     var address by remember { mutableStateOf(initialClient?.address ?: "") }
     var notes by remember { mutableStateOf(initialClient?.notes ?: "") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showPermissionRationale by remember { mutableStateOf(false) }
 
     // Contact Picker Launcher
     val contactPickerLauncher = rememberLauncherForActivityResult(
@@ -77,6 +82,33 @@ fun ClientFormDialog(
                 if (info.email.isNotBlank()) email = info.email
                 errorMessage = null
             }
+        }
+    }
+
+    // Permission request launcher for Contacts
+    val requestContactsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            try {
+                contactPickerLauncher.launch(ContactPickerHelper.createContactPickerIntent())
+            } catch (e: Exception) {
+                errorMessage = "No se pudo abrir la agenda de contactos."
+            }
+        } else {
+            showPermissionRationale = true
+        }
+    }
+
+    fun launchContactPicker() {
+        if (PermissionHelper.isContactsGranted(context)) {
+            try {
+                contactPickerLauncher.launch(ContactPickerHelper.createContactPickerIntent())
+            } catch (e: Exception) {
+                errorMessage = "No se pudo abrir la agenda de contactos."
+            }
+        } else {
+            requestContactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
         }
     }
 
@@ -103,13 +135,7 @@ fun ClientFormDialog(
             ) {
                 // Button to import directly from device contacts
                 OutlinedButton(
-                    onClick = {
-                        try {
-                            contactPickerLauncher.launch(ContactPickerHelper.createContactPickerIntent())
-                        } catch (e: Exception) {
-                            errorMessage = "No se pudo abrir la agenda de contactos."
-                        }
-                    },
+                    onClick = { launchContactPicker() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 10.dp)
@@ -119,10 +145,10 @@ fun ClientFormDialog(
                     Icon(
                         imageVector = Icons.Default.ContactPhone,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Importar de Contactos del Teléfono", fontSize = 13.sp)
+                    Text("Importar desde Contactos del Teléfono", fontSize = 12.sp)
                 }
 
                 if (errorMessage != null) {
@@ -131,13 +157,13 @@ fun ClientFormDialog(
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 8.dp)
+                            .padding(bottom = 10.dp)
                     ) {
                         Text(
                             text = errorMessage ?: "",
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(8.dp)
+                            modifier = Modifier.padding(10.dp)
                         )
                     }
                 }
@@ -148,7 +174,7 @@ fun ClientFormDialog(
                         name = it
                         errorMessage = null
                     },
-                    label = { Text("Nombre Completo *") },
+                    label = { Text("Nombre del Cliente *") },
                     leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -180,7 +206,7 @@ fun ClientFormDialog(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email (Opcional)") },
+                    label = { Text("Correo Electrónico (Opcional)") },
                     leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     modifier = Modifier
@@ -195,7 +221,7 @@ fun ClientFormDialog(
                 OutlinedTextField(
                     value = address,
                     onValueChange = { address = it },
-                    label = { Text("Dirección / Localidad (Opcional)") },
+                    label = { Text("Dirección / Ubicación (Opcional)") },
                     leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -256,4 +282,19 @@ fun ClientFormDialog(
             }
         }
     )
+
+    if (showPermissionRationale) {
+        PermissionRationaleDialog(
+            type = AppPermissionType.CONTACTS,
+            onDismiss = { showPermissionRationale = false },
+            onRequestPermission = {
+                showPermissionRationale = false
+                requestContactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+            },
+            onOpenSettings = {
+                showPermissionRationale = false
+                PermissionHelper.openAppSettings(context)
+            }
+        )
+    }
 }

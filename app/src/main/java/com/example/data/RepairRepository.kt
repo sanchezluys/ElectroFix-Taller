@@ -33,18 +33,28 @@ class RepairRepository(
 
     suspend fun getOrderById(id: Long): RepairOrder? = repairOrderDao.getOrderById(id)
 
-    suspend fun saveOrder(order: RepairOrder): Long {
+    suspend fun saveOrder(order: RepairOrder): RepairOrder {
         return if (order.id == 0L) {
             val generatedOrderNumber = if (order.orderNumber.isBlank()) {
                 val maxId = repairOrderDao.getMaxId() ?: 1000L
-                "ORD-${maxId + 1}"
+                val count = repairOrderDao.getCount()
+                val nextNum = maxOf(1001L, maxId + 1, (1000L + count + 1))
+                "ORD-$nextNum"
             } else {
                 order.orderNumber
             }
-            repairOrderDao.insertOrder(order.copy(orderNumber = generatedOrderNumber))
+            val orderToInsert = order.copy(orderNumber = generatedOrderNumber)
+            val insertedId = repairOrderDao.insertOrder(orderToInsert)
+            orderToInsert.copy(id = insertedId)
         } else {
-            repairOrderDao.updateOrder(order)
-            order.id
+            val validOrderNumber = if (order.orderNumber.isBlank()) {
+                "ORD-${1000 + order.id}"
+            } else {
+                order.orderNumber
+            }
+            val orderToUpdate = order.copy(orderNumber = validOrderNumber)
+            repairOrderDao.updateOrder(orderToUpdate)
+            orderToUpdate
         }
     }
 

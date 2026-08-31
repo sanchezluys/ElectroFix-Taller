@@ -1,7 +1,9 @@
 package com.example.ui.dialogs
 
+import android.Manifest
 import android.app.Activity
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -87,8 +89,12 @@ import com.example.model.PaymentStatus
 import com.example.model.RepairOrder
 import com.example.model.RepairStatus
 import com.example.model.WorkshopSettings
+import com.example.util.AppPermissionType
 import com.example.util.ContactPickerHelper
 import com.example.util.ImageStorageHelper
+import com.example.util.PermissionHelper
+import com.example.util.PermissionRationaleDialog
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,6 +143,9 @@ fun OrderFormDialog(
 
     // Photos list (up to 5)
     var photos by remember { mutableStateOf(initialOrder?.photos ?: emptyList()) }
+    var pendingCameraPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingCameraPhotoPath by remember { mutableStateOf<String?>(null) }
+    var permissionRationaleType by remember { mutableStateOf<AppPermissionType?>(null) }
 
     var showSerialScannerDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -170,15 +179,78 @@ fun OrderFormDialog(
         }
     }
 
-    // Camera Photo Launcher
+    // High quality camera capture launcher
     val takePhotoLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: Bitmap? ->
-        if (bitmap != null && photos.size < 5) {
-            val savedPath = ImageStorageHelper.saveBitmap(context, bitmap, "order")
-            if (savedPath != null) {
-                photos = photos + savedPath
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && pendingCameraPhotoPath != null && photos.size < 5) {
+            try {
+                val file = File(pendingCameraPhotoPath!!)
+                if (file.exists() && file.length() > 0) {
+                    photos = photos + pendingCameraPhotoPath!!
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
+        }
+    }
+
+    // Camera Permission Request Launcher
+    val requestCameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            if (photos.size < 5) {
+                val temp = ImageStorageHelper.createTempImageUri(context, "order")
+                if (temp != null) {
+                    pendingCameraPhotoUri = temp.first
+                    pendingCameraPhotoPath = temp.second
+                    takePhotoLauncher.launch(temp.first)
+                }
+            }
+        } else {
+            permissionRationaleType = AppPermissionType.CAMERA
+        }
+    }
+
+    // Contacts Permission Request Launcher
+    val requestContactsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            try {
+                contactPickerLauncher.launch(ContactPickerHelper.createContactPickerIntent())
+            } catch (e: Exception) {
+                errorMessage = "No se pudo abrir la agenda de contactos"
+            }
+        } else {
+            permissionRationaleType = AppPermissionType.CONTACTS
+        }
+    }
+
+    fun launchCameraCapture() {
+        if (photos.size >= 5) return
+        if (PermissionHelper.isCameraGranted(context)) {
+            val temp = ImageStorageHelper.createTempImageUri(context, "order")
+            if (temp != null) {
+                pendingCameraPhotoUri = temp.first
+                pendingCameraPhotoPath = temp.second
+                takePhotoLauncher.launch(temp.first)
+            }
+        } else {
+            requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    fun launchContactPicker() {
+        if (PermissionHelper.isContactsGranted(context)) {
+            try {
+                contactPickerLauncher.launch(ContactPickerHelper.createContactPickerIntent())
+            } catch (e: Exception) {
+                errorMessage = "No se pudo abrir la agenda de contactos"
+            }
+        } else {
+            requestContactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
         }
     }
 
@@ -203,7 +275,7 @@ fun OrderFormDialog(
                 TopAppBar(
                     title = {
                         Text(
-                            text = if (initialOrder?.id != null && initialOrder.id > 0) "Editar Orden ${initialOrder.orderNumber}" else "Nueva Orden",
+                            text = if (initialOrder?.id != null && initialOrder.id > 0) "Editar Orden ${initialOrder.displayOrderNumber}" else "Nueva Orden",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -342,13 +414,7 @@ fun OrderFormDialog(
 
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         OutlinedButton(
-                            onClick = {
-                                try {
-                                    contactPickerLauncher.launch(ContactPickerHelper.createContactPickerIntent())
-                                } catch (e: Exception) {
-                                    errorMessage = "No se pudo abrir la agenda de contactos"
-                                }
-                            },
+                            onClick = { launchContactPicker() },
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                             modifier = Modifier
                                 .height(30.dp)
@@ -422,13 +488,7 @@ fun OrderFormDialog(
                     },
                     trailingIcon = {
                         IconButton(
-                            onClick = {
-                                try {
-                                    contactPickerLauncher.launch(ContactPickerHelper.createContactPickerIntent())
-                                } catch (e: Exception) {
-                                    errorMessage = "No se pudo abrir la agenda del teléfono"
-                                }
-                            }
+                            onClick = { launchContactPicker() }
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ContactPhone,
@@ -655,12 +715,7 @@ fun OrderFormDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedButton(
-                        onClick = {
-                            if (photos.size < 5) {
-                                val input: Void? = null
-                                takePhotoLauncher.launch(input)
-                            }
-                        },
+                        onClick = { launchCameraCapture() },
                         enabled = photos.size < 5,
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
@@ -968,6 +1023,26 @@ fun OrderFormDialog(
             onDismiss = { showSerialScannerDialog = false },
             onSerialDetected = { detected ->
                 serialNumber = detected
+            }
+        )
+    }
+
+    if (permissionRationaleType != null) {
+        PermissionRationaleDialog(
+            type = permissionRationaleType!!,
+            onDismiss = { permissionRationaleType = null },
+            onRequestPermission = {
+                val type = permissionRationaleType!!
+                permissionRationaleType = null
+                if (type == AppPermissionType.CAMERA) {
+                    requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                } else {
+                    requestContactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                }
+            },
+            onOpenSettings = {
+                permissionRationaleType = null
+                PermissionHelper.openAppSettings(context)
             }
         )
     }

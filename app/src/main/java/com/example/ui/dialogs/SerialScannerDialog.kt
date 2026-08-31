@@ -1,9 +1,11 @@
 package com.example.ui.dialogs
 
+import android.Manifest
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.launch
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,12 +45,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.util.AppPermissionType
+import com.example.util.ImageStorageHelper
+import com.example.util.PermissionHelper
+import com.example.util.PermissionRationaleDialog
+import java.io.File
 
 @Composable
 fun SerialScannerDialog(
@@ -56,19 +64,59 @@ fun SerialScannerDialog(
     onDismiss: () -> Unit,
     onSerialDetected: (String) -> Unit
 ) {
+    val context = LocalContext.current
     var serialText by remember { mutableStateOf(currentSerial) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingPhotoPath by remember { mutableStateOf<String?>(null) }
+    var showPermissionRationale by remember { mutableStateOf(false) }
 
+    // High quality camera photo capture
     val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: Bitmap? ->
-        if (bitmap != null) {
-            capturedBitmap = bitmap
-            // In a real device without play services ML kit bundle, we generate or prompt extracted text
-            // or let the user confirm from the captured label image.
-            if (serialText.isBlank()) {
-                serialText = "SN-${System.currentTimeMillis().toString().takeLast(8)}"
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && pendingPhotoPath != null) {
+            try {
+                val file = File(pendingPhotoPath!!)
+                if (file.exists() && file.length() > 0) {
+                    val bitmap = BitmapFactory.decodeFile(pendingPhotoPath)
+                    capturedBitmap = bitmap
+                    if (serialText.isBlank()) {
+                        serialText = "SN-${System.currentTimeMillis().toString().takeLast(8)}"
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
+        }
+    }
+
+    // Permission request launcher for Camera
+    val requestCameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val temp = ImageStorageHelper.createTempImageUri(context, "scan_serial")
+            if (temp != null) {
+                pendingPhotoUri = temp.first
+                pendingPhotoPath = temp.second
+                takePictureLauncher.launch(temp.first)
+            }
+        } else {
+            showPermissionRationale = true
+        }
+    }
+
+    fun launchCameraFlow() {
+        if (PermissionHelper.isCameraGranted(context)) {
+            val temp = ImageStorageHelper.createTempImageUri(context, "scan_serial")
+            if (temp != null) {
+                pendingPhotoUri = temp.first
+                pendingPhotoPath = temp.second
+                takePictureLauncher.launch(temp.first)
+            }
+        } else {
+            requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
@@ -125,7 +173,7 @@ fun SerialScannerDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Apunta la cámara a la etiqueta del dispositivo, código de barras o bandeja SIM.",
+                    text = "Apunta la cámara a la etiqueta del dispositivo, código de barras o bandeja SIM para registrar el serial.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -162,7 +210,7 @@ fun SerialScannerDialog(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Presiona para activar la cámara",
+                                text = "Presiona el botón para activar la cámara",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium
                             )
@@ -173,7 +221,7 @@ fun SerialScannerDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Button(
-                    onClick = { takePictureLauncher.launch() },
+                    onClick = { launchCameraFlow() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("btn_capture_serial_photo"),
@@ -222,5 +270,20 @@ fun SerialScannerDialog(
                 }
             }
         }
+    }
+
+    if (showPermissionRationale) {
+        PermissionRationaleDialog(
+            type = AppPermissionType.CAMERA,
+            onDismiss = { showPermissionRationale = false },
+            onRequestPermission = {
+                showPermissionRationale = false
+                requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            },
+            onOpenSettings = {
+                showPermissionRationale = false
+                PermissionHelper.openAppSettings(context)
+            }
+        )
     }
 }

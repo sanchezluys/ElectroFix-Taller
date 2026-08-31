@@ -137,7 +137,7 @@ fun RepairOrderCard(
 
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${order.clientName} • ${order.orderNumber}",
+                        text = "${order.clientName} • ${order.displayOrderNumber}",
                         style = MaterialTheme.typography.bodySmall,
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

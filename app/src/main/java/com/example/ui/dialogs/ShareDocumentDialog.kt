@@ -85,7 +85,7 @@ fun ShareDocumentDialog(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "${order.orderNumber} • ${order.clientName}",
+                            text = "${order.displayOrderNumber} • ${order.clientName}",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

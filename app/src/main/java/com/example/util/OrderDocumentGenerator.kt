@@ -128,7 +128,7 @@ object OrderDocumentGenerator {
             canvas.drawText("ORDEN DE INGRESO", ticketBoxX + 12f, yOffset + 20f, boldTextPaint)
             boldTextPaint.textSize = 14f
             boldTextPaint.color = Color.rgb(11, 87, 208)
-            canvas.drawText("N° ${order.orderNumber}", ticketBoxX + 12f, yOffset + 40f, boldTextPaint)
+            canvas.drawText("N° ${order.displayOrderNumber}", ticketBoxX + 12f, yOffset + 40f, boldTextPaint)
             boldTextPaint.textSize = 9.5f
             boldTextPaint.color = Color.rgb(27, 27, 31)
 
@@ -327,7 +327,7 @@ object OrderDocumentGenerator {
             // Save PDF File
             val dir = File(context.cacheDir, "documents")
             if (!dir.exists()) dir.mkdirs()
-            val pdfFile = File(dir, "Ingreso_${order.orderNumber}.pdf")
+            val pdfFile = File(dir, "Ingreso_${order.displayOrderNumber}.pdf")
             val outputStream = FileOutputStream(pdfFile)
             pdfDocument.writeTo(outputStream)
             outputStream.flush()
@@ -439,7 +439,7 @@ object OrderDocumentGenerator {
             )
             boldPaint.color = Color.rgb(11, 87, 208)
             boldPaint.textSize = 22f
-            canvas.drawText("ORDEN DE SERVICIO TÉCNICO: ${order.orderNumber}", innerMargin + 20f, y + 38f, boldPaint)
+            canvas.drawText("ORDEN DE SERVICIO TÉCNICO: ${order.displayOrderNumber}", innerMargin + 20f, y + 38f, boldPaint)
             boldPaint.color = Color.rgb(27, 27, 31)
             boldPaint.textSize = 20f
 
@@ -483,6 +483,26 @@ object OrderDocumentGenerator {
             for (line in wrapText(order.reportedIssue, 55).take(2)) {
                 canvas.drawText("   $line", innerMargin, y, textPaint)
                 y += 28f
+            }
+
+            if (order.technicalDiagnosis.isNotBlank()) {
+                y += 6f
+                canvas.drawText("🔬 Diagnóstico:", innerMargin, y, boldPaint)
+                y += 28f
+                for (line in wrapText(order.technicalDiagnosis, 55).take(2)) {
+                    canvas.drawText("   $line", innerMargin, y, textPaint)
+                    y += 28f
+                }
+            }
+
+            if (order.workPerformed.isNotBlank()) {
+                y += 6f
+                canvas.drawText("✅ Trabajo Realizado:", innerMargin, y, boldPaint)
+                y += 28f
+                for (line in wrapText(order.workPerformed, 55).take(2)) {
+                    canvas.drawText("   $line", innerMargin, y, textPaint)
+                    y += 28f
+                }
             }
 
             y += 20f
@@ -533,7 +553,7 @@ object OrderDocumentGenerator {
             // Save Image File
             val dir = File(context.cacheDir, "documents")
             if (!dir.exists()) dir.mkdirs()
-            val imageFile = File(dir, "Comprobante_${order.orderNumber}.png")
+            val imageFile = File(dir, "Comprobante_${order.displayOrderNumber}.png")
             val outputStream = FileOutputStream(imageFile)
             bitmap.compress(Bitmap.CompressFormat.PNG, 95, outputStream)
             outputStream.flush()
