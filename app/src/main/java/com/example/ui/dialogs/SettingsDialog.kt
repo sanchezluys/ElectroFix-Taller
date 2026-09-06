@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -99,29 +100,31 @@ fun SettingsDialog(
         }
     }
 
+    fun updateAndAutoSave(newSettings: WorkshopSettings) {
+        currentSettings = newSettings
+        onSaveSettings(newSettings)
+    }
+
     val pickLogoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
             val savedPath = ImageStorageHelper.saveWorkshopLogo(context, uri)
             val updated = currentSettings.copy(logoUri = savedPath ?: uri.toString())
-            currentSettings = updated
-            if (currentSettings.isDataLocked) {
-                onSaveSettings(updated)
-            }
+            updateAndAutoSave(updated)
         }
     }
 
     val onDeleteLogo = {
         val updated = currentSettings.copy(logoUri = null)
-        currentSettings = updated
-        if (currentSettings.isDataLocked) {
-            onSaveSettings(updated)
-        }
+        updateAndAutoSave(updated)
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            onSaveSettings(currentSettings)
+            onDismiss()
+        },
         modifier = Modifier
             .fillMaxWidth(0.96f)
             .testTag("dialog_settings"),
@@ -148,11 +151,37 @@ fun SettingsDialog(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text(
-                            text = "Ajustes del Taller",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Ajustes del Taller",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                color = Color(0xFFDCFCE7),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = Color(0xFF16A34A),
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                        text = "Autoguardado",
+                                        fontSize = 9.sp,
+                                        color = Color(0xFF16A34A),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                         Text(
                             text = "Moneda, datos del taller y mantenimiento",
                             style = MaterialTheme.typography.bodySmall,
@@ -163,7 +192,10 @@ fun SettingsDialog(
                 }
 
                 IconButton(
-                    onClick = onDismiss,
+                    onClick = {
+                        onSaveSettings(currentSettings)
+                        onDismiss()
+                    },
                     modifier = Modifier
                         .size(32.dp)
                         .testTag("btn_close_settings")
@@ -457,7 +489,7 @@ fun SettingsDialog(
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
                                     .clickable {
-                                        currentSettings = currentSettings.copy(currency = currency)
+                                        updateAndAutoSave(currentSettings.copy(currency = currency))
                                     }
                                     .testTag("currency_option_${currency.code.lowercase()}"),
                                 colors = CardDefaults.cardColors(
@@ -483,7 +515,7 @@ fun SettingsDialog(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         RadioButton(
                                             selected = isSelected,
-                                            onClick = { currentSettings = currentSettings.copy(currency = currency) },
+                                            onClick = { updateAndAutoSave(currentSettings.copy(currency = currency)) },
                                             colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
@@ -550,7 +582,7 @@ fun SettingsDialog(
                                 }
                                 Switch(
                                     checked = currentSettings.useThousandSeparator,
-                                    onCheckedChange = { currentSettings = currentSettings.copy(useThousandSeparator = it) },
+                                    onCheckedChange = { updateAndAutoSave(currentSettings.copy(useThousandSeparator = it)) },
                                     modifier = Modifier.testTag("switch_thousand_separator")
                                 )
                             }
@@ -570,7 +602,7 @@ fun SettingsDialog(
                                                 if (currentSettings.thousandSeparatorChar == ',') MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                                                 RoundedCornerShape(8.dp)
                                             )
-                                            .clickable { currentSettings = currentSettings.copy(thousandSeparatorChar = ',') }
+                                            .clickable { updateAndAutoSave(currentSettings.copy(thousandSeparatorChar = ',')) }
                                             .padding(8.dp),
                                         color = if (currentSettings.thousandSeparatorChar == ',') MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
                                     ) {
@@ -589,7 +621,7 @@ fun SettingsDialog(
                                                 if (currentSettings.thousandSeparatorChar == '.') MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                                                 RoundedCornerShape(8.dp)
                                             )
-                                            .clickable { currentSettings = currentSettings.copy(thousandSeparatorChar = '.') }
+                                            .clickable { updateAndAutoSave(currentSettings.copy(thousandSeparatorChar = '.')) }
                                             .padding(8.dp),
                                         color = if (currentSettings.thousandSeparatorChar == '.') MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
                                     ) {
@@ -672,7 +704,7 @@ fun SettingsDialog(
                                 }
                                 if (currentSettings.logoUri != null) {
                                     OutlinedButton(
-                                        onClick = { currentSettings = currentSettings.copy(logoUri = null) },
+                                        onClick = { onDeleteLogo() },
                                         shape = RoundedCornerShape(8.dp),
                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
@@ -690,7 +722,7 @@ fun SettingsDialog(
 
                     OutlinedTextField(
                         value = currentSettings.workshopName,
-                        onValueChange = { currentSettings = currentSettings.copy(workshopName = it) },
+                        onValueChange = { updateAndAutoSave(currentSettings.copy(workshopName = it)) },
                         label = { Text("Nombre del Taller") },
                         leadingIcon = { Icon(Icons.Default.Business, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -699,7 +731,7 @@ fun SettingsDialog(
 
                     OutlinedTextField(
                         value = currentSettings.workshopPhone,
-                        onValueChange = { currentSettings = currentSettings.copy(workshopPhone = it) },
+                        onValueChange = { updateAndAutoSave(currentSettings.copy(workshopPhone = it)) },
                         label = { Text("Teléfono / WhatsApp") },
                         leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -708,7 +740,7 @@ fun SettingsDialog(
 
                     OutlinedTextField(
                         value = currentSettings.workshopAddress,
-                        onValueChange = { currentSettings = currentSettings.copy(workshopAddress = it) },
+                        onValueChange = { updateAndAutoSave(currentSettings.copy(workshopAddress = it)) },
                         label = { Text("Dirección del Taller") },
                         leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -717,7 +749,7 @@ fun SettingsDialog(
 
                     OutlinedTextField(
                         value = currentSettings.warrantyPolicy,
-                        onValueChange = { currentSettings = currentSettings.copy(warrantyPolicy = it) },
+                        onValueChange = { updateAndAutoSave(currentSettings.copy(warrantyPolicy = it)) },
                         label = { Text("Términos y Política de Garantía") },
                         leadingIcon = { Icon(Icons.Default.Policy, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -853,31 +885,31 @@ fun SettingsDialog(
             }
         },
         confirmButton = {
-            if (!currentSettings.isDataLocked) {
-                Button(
-                    onClick = {
-                        onSaveSettings(currentSettings.copy(isDataLocked = true))
-                        onDismiss()
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.testTag("btn_save_settings")
-                ) {
-                    Text("Guardar Ajustes")
-                }
-            } else {
-                Button(
-                    onClick = onDismiss,
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("Aceptar")
-                }
+            Button(
+                onClick = {
+                    onSaveSettings(currentSettings)
+                    onDismiss()
+                },
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.testTag("btn_save_settings")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Listo (Guardado)")
             }
         },
         dismissButton = {
-            if (!currentSettings.isDataLocked) {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancelar")
+            TextButton(
+                onClick = {
+                    onSaveSettings(currentSettings)
+                    onDismiss()
                 }
+            ) {
+                Text("Cerrar")
             }
         }
     )

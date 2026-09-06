@@ -12,10 +12,37 @@
 #   public *;
 #}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Preserve Line Numbers for Crash Reporting
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep Room database, entities, DAOs, and TypeConverters
+-keep class androidx.room.** { *; }
+-dontwarn androidx.room.**
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao interface * { *; }
+-keepclassmembers class * {
+    @androidx.room.TypeConverter *;
+}
+
+# Keep project domain and data models
+-keep class com.example.model.** { *; }
+-keep class com.example.data.** { *; }
+-keep class com.example.viewmodel.** { *; }
+
+# Keep Moshi models and adapters
+-keepattributes *Annotation*
+-keepclassmembers class * {
+    @com.squareup.moshi.* <fields>;
+    @com.squareup.moshi.* <methods>;
+}
+-keep class com.squareup.moshi.** { *; }
+
+# Keep Coil
+-keep class coil.** { *; }
+
+# Keep Kotlin Coroutines
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+

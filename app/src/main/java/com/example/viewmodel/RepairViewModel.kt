@@ -498,6 +498,17 @@ class RepairViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun autoSaveOrder(order: RepairOrder) {
+        viewModelScope.launch {
+            val saved = repository.saveOrder(order)
+            _dialogs.update {
+                if (it.selectedOrderForDetail?.id == order.id) {
+                    it.copy(selectedOrderForDetail = saved)
+                } else it
+            }
+        }
+    }
+
     fun deleteOrder(order: RepairOrder) {
         viewModelScope.launch {
             repository.deleteOrder(order)

@@ -37,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -98,6 +99,7 @@ fun ElectroFixApp(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
         topBar = {
             TopAppBar(
                 title = {
@@ -342,7 +344,8 @@ fun ElectroFixApp(
             existingClients = uiState.clients,
             settings = uiState.settings,
             onDismiss = { viewModel.closeOrderForm() },
-            onSave = { order -> viewModel.saveOrder(order) }
+            onSave = { order -> viewModel.saveOrder(order) },
+            onAutoSave = { order -> viewModel.autoSaveOrder(order) }
         )
     }
 

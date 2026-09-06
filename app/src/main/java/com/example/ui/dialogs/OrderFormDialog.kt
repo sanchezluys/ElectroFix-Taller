@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Delete
@@ -103,7 +104,8 @@ fun OrderFormDialog(
     existingClients: List<Client>,
     onDismiss: () -> Unit,
     onSave: (RepairOrder) -> Unit,
-    settings: WorkshopSettings = WorkshopSettings()
+    settings: WorkshopSettings = WorkshopSettings(),
+    onAutoSave: ((RepairOrder) -> Unit)? = null
 ) {
     val context = LocalContext.current
 
@@ -266,22 +268,111 @@ fun OrderFormDialog(
         }
     }
 
+    val buildOrderToSave = {
+        val parts = partsCostText.toDoubleOrNull() ?: 0.0
+        val labor = laborCostText.toDoubleOrNull() ?: 0.0
+        val customTotal = totalText.toDoubleOrNull()
+        val computedTotal = if (customTotal != null && customTotal > 0) customTotal else (parts + labor)
+        val deposit = depositText.toDoubleOrNull() ?: 0.0
+
+        val determinedPaymentStatus = when {
+            deposit >= computedTotal && computedTotal > 0 -> PaymentStatus.PAGADO
+            deposit > 0 -> PaymentStatus.ABONADO
+            else -> paymentStatus
+        }
+
+        (initialOrder ?: RepairOrder(
+            orderNumber = "",
+            clientName = clientName,
+            clientPhone = clientPhone,
+            deviceCategory = category,
+            deviceBrand = brand,
+            deviceModel = model,
+            reportedIssue = reportedIssue
+        )).copy(
+            clientId = clientId,
+            clientName = clientName.trim(),
+            clientPhone = clientPhone.trim(),
+            clientEmail = clientEmail.trim(),
+            deviceCategory = category,
+            deviceBrand = brand.trim(),
+            deviceModel = model.trim(),
+            serialNumber = serialNumber.trim(),
+            accessoriesIncluded = accessories.trim(),
+            reportedIssue = reportedIssue.trim(),
+            technicalDiagnosis = technicalDiagnosis.trim(),
+            workPerformed = workPerformed.trim(),
+            status = status,
+            paymentStatus = determinedPaymentStatus,
+            partsCost = parts,
+            laborCost = labor,
+            depositPaid = deposit,
+            totalAmount = computedTotal,
+            estimatedCost = computedTotal,
+            isUrgent = isUrgent,
+            statusNote = statusNote.trim(),
+            photos = photos
+        )
+    }
+
+    val autoSaveAndDismiss = {
+        if (initialOrder != null && initialOrder.id > 0) {
+            if (clientName.isNotBlank() && clientPhone.isNotBlank() && brand.isNotBlank() && model.isNotBlank() && reportedIssue.isNotBlank()) {
+                val updated = buildOrderToSave()
+                if (onAutoSave != null) {
+                    onAutoSave(updated)
+                } else {
+                    onSave(updated)
+                }
+            }
+        }
+        onDismiss()
+    }
+
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = autoSaveAndDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Scaffold(
             topBar = {
                 TopAppBar(
                     title = {
-                        Text(
-                            text = if (initialOrder?.id != null && initialOrder.id > 0) "Editar Orden ${initialOrder.displayOrderNumber}" else "Nueva Orden",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (initialOrder?.id != null && initialOrder.id > 0) "Editar Orden ${initialOrder.displayOrderNumber}" else "Nueva Orden",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (initialOrder?.id != null && initialOrder.id > 0) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    color = Color(0xFFDCFCE7),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = Color(0xFF16A34A),
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text(
+                                            text = "Autoguardado",
+                                            fontSize = 9.sp,
+                                            color = Color(0xFF16A34A),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     },
                     navigationIcon = {
-                        IconButton(onClick = onDismiss, modifier = Modifier.testTag("order_form_close")) {
+                        IconButton(onClick = autoSaveAndDismiss, modifier = Modifier.testTag("order_form_close")) {
                             Icon(imageVector = Icons.Default.Close, contentDescription = "Cerrar")
                         }
                     },
@@ -305,52 +396,7 @@ fun OrderFormDialog(
                                     return@Button
                                 }
 
-                                val parts = partsCostText.toDoubleOrNull() ?: 0.0
-                                val labor = laborCostText.toDoubleOrNull() ?: 0.0
-                                val customTotal = totalText.toDoubleOrNull()
-                                val computedTotal = if (customTotal != null && customTotal > 0) customTotal else (parts + labor)
-                                val deposit = depositText.toDoubleOrNull() ?: 0.0
-
-                                val determinedPaymentStatus = when {
-                                    deposit >= computedTotal && computedTotal > 0 -> PaymentStatus.PAGADO
-                                    deposit > 0 -> PaymentStatus.ABONADO
-                                    else -> paymentStatus
-                                }
-
-                                val orderToSave = (initialOrder ?: RepairOrder(
-                                    orderNumber = "",
-                                    clientName = clientName,
-                                    clientPhone = clientPhone,
-                                    deviceCategory = category,
-                                    deviceBrand = brand,
-                                    deviceModel = model,
-                                    reportedIssue = reportedIssue
-                                )).copy(
-                                    clientId = clientId,
-                                    clientName = clientName.trim(),
-                                    clientPhone = clientPhone.trim(),
-                                    clientEmail = clientEmail.trim(),
-                                    deviceCategory = category,
-                                    deviceBrand = brand.trim(),
-                                    deviceModel = model.trim(),
-                                    serialNumber = serialNumber.trim(),
-                                    accessoriesIncluded = accessories.trim(),
-                                    reportedIssue = reportedIssue.trim(),
-                                    technicalDiagnosis = technicalDiagnosis.trim(),
-                                    workPerformed = workPerformed.trim(),
-                                    status = status,
-                                    paymentStatus = determinedPaymentStatus,
-                                    partsCost = parts,
-                                    laborCost = labor,
-                                    depositPaid = deposit,
-                                    totalAmount = computedTotal,
-                                    estimatedCost = computedTotal,
-                                    isUrgent = isUrgent,
-                                    statusNote = statusNote.trim(),
-                                    photos = photos
-                                )
-
-                                onSave(orderToSave)
+                                onSave(buildOrderToSave())
                             },
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
