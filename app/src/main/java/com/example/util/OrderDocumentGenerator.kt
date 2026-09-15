@@ -3,21 +3,29 @@ package com.example.util
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import androidx.core.graphics.drawable.toBitmap
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import coil.size.Precision
+import coil.size.Scale
 import com.example.model.APP_WATERMARK
 import com.example.model.RepairOrder
 import com.example.model.RepairStatus
 import com.example.model.WorkshopSettings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -604,16 +612,30 @@ object OrderDocumentGenerator {
     private fun loadBitmapFromUri(context: Context, uriString: String, targetWidth: Int, targetHeight: Int): Bitmap? {
         return try {
             val uri = Uri.parse(uriString)
-            val inputStream = if (uri.scheme == "content" || uri.scheme == "file") {
-                context.contentResolver.openInputStream(uri)
+            val requestData: Any = if (uri.scheme == null || uri.scheme == "file") {
+                val path = uri.path ?: uriString
+                File(path)
             } else {
-                File(uriString).inputStream()
+                uri
             }
-            val original = BitmapFactory.decodeStream(inputStream)
-            inputStream?.close()
-            if (original != null) {
-                Bitmap.createScaledBitmap(original, targetWidth, targetHeight, true)
-            } else null
+
+            val request = ImageRequest.Builder(context)
+                .data(requestData)
+                .size(targetWidth, targetHeight)
+                .scale(Scale.FIT)
+                .precision(Precision.INEXACT)
+                .allowHardware(false)
+                .build()
+
+            val result = runBlocking(Dispatchers.IO) {
+                context.imageLoader.execute(request)
+            }
+
+            if (result is SuccessResult) {
+                (result.drawable as? BitmapDrawable)?.bitmap ?: result.drawable.toBitmap(targetWidth, targetHeight)
+            } else {
+                null
+            }
         } catch (e: Exception) {
             null
         }

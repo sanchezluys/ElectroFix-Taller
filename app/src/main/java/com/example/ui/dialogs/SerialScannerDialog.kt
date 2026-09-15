@@ -2,7 +2,7 @@ package com.example.ui.dialogs
 
 import android.Manifest
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,10 +53,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.graphics.drawable.toBitmap
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import coil.size.Precision
+import coil.size.Scale
 import com.example.util.AppPermissionType
 import com.example.util.ImageStorageHelper
 import com.example.util.PermissionHelper
 import com.example.util.PermissionRationaleDialog
+import kotlinx.coroutines.launch
 import java.io.File
 
 @Composable
@@ -65,13 +73,14 @@ fun SerialScannerDialog(
     onSerialDetected: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var serialText by remember { mutableStateOf(currentSerial) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var pendingPhotoPath by remember { mutableStateOf<String?>(null) }
     var showPermissionRationale by remember { mutableStateOf(false) }
 
-    // High quality camera photo capture
+    // High quality camera photo capture using Coil for automatic downsampling and memory cache
     val takePictureLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
@@ -79,8 +88,19 @@ fun SerialScannerDialog(
             try {
                 val file = File(pendingPhotoPath!!)
                 if (file.exists() && file.length() > 0) {
-                    val bitmap = BitmapFactory.decodeFile(pendingPhotoPath)
-                    capturedBitmap = bitmap
+                    coroutineScope.launch {
+                        val request = ImageRequest.Builder(context)
+                            .data(file)
+                            .size(1024, 1024)
+                            .scale(Scale.FIT)
+                            .precision(Precision.INEXACT)
+                            .allowHardware(false)
+                            .build()
+                        val result = context.imageLoader.execute(request)
+                        if (result is SuccessResult) {
+                            capturedBitmap = (result.drawable as? BitmapDrawable)?.bitmap ?: result.drawable.toBitmap()
+                        }
+                    }
                     if (serialText.isBlank()) {
                         serialText = "SN-${System.currentTimeMillis().toString().takeLast(8)}"
                     }
