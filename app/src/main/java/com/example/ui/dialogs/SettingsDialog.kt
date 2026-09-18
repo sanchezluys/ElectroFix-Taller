@@ -79,6 +79,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.model.AppCurrency
 import com.example.model.WorkshopSettings
@@ -143,73 +145,62 @@ fun SettingsDialog(
         updateAndAutoSave(updated)
     }
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = {
             onSaveSettings(currentSettings)
             onDismiss()
         },
-        modifier = Modifier
-            .fillMaxWidth(0.96f)
-            .testTag("dialog_settings"),
-        title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Ajustes",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                IconButton(
-                    onClick = {
-                        onSaveSettings(currentSettings)
-                        onDismiss()
-                    },
-                    modifier = Modifier
-                        .size(32.dp)
-                        .testTag("btn_close_settings")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Cerrar",
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        },
-        text = {
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .padding(vertical = 16.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .testTag("dialog_settings"),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
+                // Cabecera: Título centrado sin ícono, con botón cerrar a la derecha
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Ajustes",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+
+                    IconButton(
+                        onClick = {
+                            onSaveSettings(currentSettings)
+                            onDismiss()
+                        },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .align(Alignment.CenterEnd)
+                            .testTag("btn_close_settings")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cerrar",
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 // Notificación emergente temporal de guardado automático (5 segundos)
                 AnimatedVisibility(
                     visible = showSavedNotification,
@@ -249,6 +240,7 @@ fun SettingsDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .weight(1f, fill = false)
                         .verticalScroll(rememberScrollState())
                 ) {
                 if (currentSettings.isDataLocked) {
@@ -917,21 +909,24 @@ fun SettingsDialog(
                     }
                 }
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onSaveSettings(currentSettings)
-                    onDismiss()
-                },
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.testTag("btn_close_settings_bottom")
-            ) {
-                Text("Cerrar")
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        onSaveSettings(currentSettings)
+                        onDismiss()
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("btn_close_settings_bottom")
+                ) {
+                    Text("Cerrar")
+                }
             }
         }
-    )
+    }
 
     // Delete All Confirm Dialog
     if (showDeleteAllConfirmDialog) {
