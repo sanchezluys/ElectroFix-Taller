@@ -5,6 +5,11 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -56,7 +62,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -68,12 +76,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.model.AppCurrency
 import com.example.model.WorkshopSettings
 import com.example.util.ImageStorageHelper
+import kotlinx.coroutines.delay
 
 @Composable
 fun SettingsDialog(
@@ -85,6 +95,18 @@ fun SettingsDialog(
     val context = LocalContext.current
     var currentSettings by remember { mutableStateOf(settings) }
     var showDeleteAllConfirmDialog by remember { mutableStateOf(false) }
+
+    // Notificación de cambios guardados por 5 segundos
+    var showSavedNotification by remember { mutableStateOf(false) }
+    var lastSavedTimestamp by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(lastSavedTimestamp) {
+        if (lastSavedTimestamp > 0L) {
+            showSavedNotification = true
+            delay(5000L)
+            showSavedNotification = false
+        }
+    }
 
     val apkVersion = remember(context) {
         try {
@@ -103,6 +125,7 @@ fun SettingsDialog(
     fun updateAndAutoSave(newSettings: WorkshopSettings) {
         currentSettings = newSettings
         onSaveSettings(newSettings)
+        lastSavedTimestamp = System.currentTimeMillis()
     }
 
     val pickLogoLauncher = rememberLauncherForActivityResult(
@@ -134,7 +157,10 @@ fun SettingsDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer,
                         shape = RoundedCornerShape(10.dp),
@@ -149,47 +175,18 @@ fun SettingsDialog(
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Ajustes del Taller",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Surface(
-                                color = Color(0xFFDCFCE7),
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = Color(0xFF16A34A),
-                                        modifier = Modifier.size(10.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(2.dp))
-                                    Text(
-                                        text = "Autoguardado",
-                                        fontSize = 9.sp,
-                                        color = Color(0xFF16A34A),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                        Text(
-                            text = "Moneda, datos del taller y mantenimiento",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Ajustes",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
+
+                Spacer(modifier = Modifier.width(4.dp))
 
                 IconButton(
                     onClick = {
@@ -212,8 +209,48 @@ fun SettingsDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
             ) {
+                // Notificación emergente temporal de guardado automático (5 segundos)
+                AnimatedVisibility(
+                    visible = showSavedNotification,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 })
+                ) {
+                    Surface(
+                        color = Color(0xFFDCFCE7),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFF86EFAC)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .testTag("settings_saved_notification")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF16A34A),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Cambios guardados correctamente",
+                                color = Color(0xFF15803D),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
                 if (currentSettings.isDataLocked) {
                     // ==========================================
                     // READ-ONLY DISPLAY MODE
@@ -221,7 +258,7 @@ fun SettingsDialog(
 
                     // 1. Moneda Activa
                     Text(
-                        text = "Moneda del Taller",
+                        text = "Moneda",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -265,11 +302,6 @@ fun SettingsDialog(
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                    Text(
-                                        text = "Ejemplo: ${currentSettings.formatMoney(1450000.0)}",
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -430,36 +462,38 @@ fun SettingsDialog(
                                     )
                                 }
                             }
-
-                            if (currentSettings.warrantyPolicy.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(verticalAlignment = Alignment.Top) {
-                                    Icon(
-                                        Icons.Default.Policy,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(14.dp).padding(top = 2.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Column {
-                                        Text(
-                                            text = "Garantía y Términos:",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = currentSettings.warrantyPolicy,
-                                            fontSize = 11.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // 3. Garantía y Términos (Editable y configurable en cualquier momento)
+                    Text(
+                        text = "Garantía y Términos de Servicio",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Esta política se imprimirá en los comprobantes PDF y mensajes de WhatsApp enviados a los clientes:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(top = 2.dp, bottom = 6.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = currentSettings.warrantyPolicy,
+                        onValueChange = { updateAndAutoSave(currentSettings.copy(warrantyPolicy = it)) },
+                        label = { Text("Términos y Política de Garantía") },
+                        placeholder = { Text("Escribe aquí la cobertura, condiciones y exclusiones de garantía...") },
+                        leadingIcon = { Icon(Icons.Default.Policy, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("input_settings_warranty_policy"),
+                        minLines = 3,
+                        maxLines = 6
+                    )
 
                 } else {
                     // ==========================================
@@ -468,7 +502,7 @@ fun SettingsDialog(
 
                     // 1. Moneda
                     Text(
-                        text = "1. Moneda del Taller",
+                        text = "1. Moneda",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -848,7 +882,7 @@ fun SettingsDialog(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "ElectroFix Taller Pro",
+                                text = "ElectroFix Taller",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -874,13 +908,14 @@ fun SettingsDialog(
                         Spacer(modifier = Modifier.height(6.dp))
 
                         Text(
-                            text = "by sanchezluys@gmail 2026",
+                            text = "sanchezluys@gmail.com",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.testTag("app_author_tag")
                         )
                     }
+                }
                 }
             }
         },
@@ -891,23 +926,7 @@ fun SettingsDialog(
                     onDismiss()
                 },
                 shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.testTag("btn_save_settings")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Listo (Guardado)")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    onSaveSettings(currentSettings)
-                    onDismiss()
-                }
+                modifier = Modifier.testTag("btn_close_settings_bottom")
             ) {
                 Text("Cerrar")
             }
