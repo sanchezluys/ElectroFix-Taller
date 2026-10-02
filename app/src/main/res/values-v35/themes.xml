@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.MyApplication" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- In Android 15+ (API 35+), allow drawing across cutouts without deprecated attributes -->
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+
+    <!-- Clean override of EdgeToEdgeFloatingDialogTheme for API 35+ without obsolete statusBarColor/navigationBarColor -->
+    <style name="EdgeToEdgeFloatingDialogTheme" parent="android:Theme.DeviceDefault.Dialog">
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+        <item name="android:windowClipToOutline">false</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowElevation">0dp</item>
+    </style>
+</resources>
