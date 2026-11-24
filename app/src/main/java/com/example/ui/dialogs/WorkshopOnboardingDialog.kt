@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -85,12 +86,18 @@ fun WorkshopOnboardingDialog(
 
     Dialog(
         onDismissRequest = { onDismiss() },
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false, usePlatformDefaultWidth = false)
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
     ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .padding(vertical = 24.dp)
+                .safeDrawingPadding()
+                .padding(vertical = 16.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .testTag("dialog_workshop_onboarding"),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

@@ -9,6 +9,7 @@
 
     <!-- Clean override of EdgeToEdgeFloatingDialogTheme for API 35+ without obsolete statusBarColor/navigationBarColor -->
     <style name="EdgeToEdgeFloatingDialogTheme" parent="android:Theme.DeviceDefault.Dialog">
+        <item name="android:windowAnimationStyle">@null</item>
         <item name="android:windowLayoutInDisplayCutoutMode">always</item>
         <item name="android:windowClipToOutline">false</item>
         <item name="android:windowIsFloating">false</item>

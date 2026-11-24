@@ -1,5 +1,6 @@
 package com.example
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -12,10 +13,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,13 +45,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,6 +81,9 @@ import com.example.ui.screens.InventoryScreen
 import com.example.ui.screens.MetricsScreen
 import com.example.ui.screens.OrdersScreen
 import com.example.ui.theme.MyApplicationTheme
+import com.example.update.InAppUpdateBanner
+import com.example.update.ManualUpdateCheckResult
+import com.example.update.rememberInAppUpdateController
 import com.example.viewmodel.RepairViewModel
 import com.example.viewmodel.WorkshopTab
 
@@ -79,7 +91,6 @@ class MainActivity : ComponentActivity() {
     private val viewModel: RepairViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(
                 android.graphics.Color.TRANSPARENT,
@@ -90,6 +101,10 @@ class MainActivity : ComponentActivity() {
                 android.graphics.Color.TRANSPARENT
             )
         )
+        super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
         setContent {
             MyApplicationTheme {
                 ElectroFixApp(viewModel = viewModel)
@@ -106,10 +121,13 @@ fun ElectroFixApp(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val (updateController, updateLauncher) = rememberInAppUpdateController(snackbarHostState = snackbarHostState)
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
+        contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -252,11 +270,22 @@ fun ElectroFixApp(
             }
         }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .imePadding()
         ) {
+            InAppUpdateBanner(
+                state = updateController.uiState,
+                isDismissed = updateController.isBannerDismissed,
+                onUpdateClick = { updateController.launchUpdateFromBanner(updateLauncher) },
+                onRestartClick = { updateController.completeDownloadedUpdate() },
+                onDismissClick = { updateController.dismissBanner() }
+            )
+
+            Box(modifier = Modifier.weight(1f).fillMaxSize()) {
             when (uiState.currentTab) {
                 WorkshopTab.ORDERS -> {
                     OrdersScreen(
@@ -306,6 +335,7 @@ fun ElectroFixApp(
                         currency = uiState.settings.currency
                     )
                 }
+            }
             }
         }
     }
@@ -453,6 +483,13 @@ fun ElectroFixApp(
             },
             onDeleteAllOrders = {
                 viewModel.deleteAllData()
+            },
+            onCheckForUpdates = { onResult ->
+                updateController.checkForUpdates(
+                    launcher = updateLauncher,
+                    autoLaunchIfAvailable = false,
+                    onManualResult = onResult
+                )
             },
             onDismiss = { viewModel.closeSettingsDialog() }
         )

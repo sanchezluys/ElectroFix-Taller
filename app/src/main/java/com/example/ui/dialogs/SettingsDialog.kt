@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -84,6 +86,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.model.AppCurrency
 import com.example.model.WorkshopSettings
+import com.example.update.ManualUpdateCheckResult
 import com.example.util.ImageStorageHelper
 import kotlinx.coroutines.delay
 
@@ -92,11 +95,13 @@ fun SettingsDialog(
     settings: WorkshopSettings,
     onSaveSettings: (WorkshopSettings) -> Unit,
     onDeleteAllOrders: () -> Unit,
+    onCheckForUpdates: (((ManualUpdateCheckResult) -> Unit) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     var currentSettings by remember { mutableStateOf(settings) }
     var showDeleteAllConfirmDialog by remember { mutableStateOf(false) }
+    var manualUpdateStatus by remember { mutableStateOf<ManualUpdateCheckResult?>(null) }
 
     // Notificación de cambios guardados por 5 segundos
     var showSavedNotification by remember { mutableStateOf(false) }
@@ -153,13 +158,15 @@ fun SettingsDialog(
         properties = DialogProperties(
             dismissOnBackPress = true,
             dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
         )
     ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .padding(vertical = 16.dp)
+                .safeDrawingPadding()
+                .padding(vertical = 12.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .testTag("dialog_settings"),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -906,6 +913,54 @@ fun SettingsDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.testTag("app_author_tag")
                         )
+
+                        if (onCheckForUpdates != null) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    manualUpdateStatus = ManualUpdateCheckResult.CHECKING
+                                    onCheckForUpdates { result ->
+                                        manualUpdateStatus = result
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.testTag("btn_check_play_updates")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SystemUpdate,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (manualUpdateStatus == ManualUpdateCheckResult.CHECKING) {
+                                        "Verificando..."
+                                    } else {
+                                        "Buscar actualizaciones"
+                                    },
+                                    fontSize = 12.sp
+                                )
+                            }
+
+                            val statusText = when (manualUpdateStatus) {
+                                ManualUpdateCheckResult.UP_TO_DATE -> "Tu aplicación ya está actualizada."
+                                ManualUpdateCheckResult.UNAVAILABLE -> "Google Play Store no está disponible en este momento."
+                                ManualUpdateCheckResult.UPDATE_FOUND -> "Hay una nueva actualización disponible en Google Play."
+                                else -> null
+                            }
+                            if (statusText != null) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = statusText,
+                                    fontSize = 11.sp,
+                                    color = if (manualUpdateStatus == ManualUpdateCheckResult.UPDATE_FOUND) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
                 }

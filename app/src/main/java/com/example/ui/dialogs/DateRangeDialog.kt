@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -72,7 +73,10 @@ fun DateRangeDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
     ) {
         Surface(
             shape = RoundedCornerShape(24.dp),
@@ -80,6 +84,7 @@ fun DateRangeDialog(
             tonalElevation = 6.dp,
             modifier = modifier
                 .fillMaxWidth(0.92f)
+                .safeDrawingPadding()
                 .padding(vertical = 16.dp)
                 .testTag("date_range_dialog")
         ) {
